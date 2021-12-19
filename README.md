@@ -1,5 +1,7 @@
 # HTTP Client
 
+[![tests](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml/badge.svg)](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml)
+
 Standalone library for formatting HTTP requests.
 
 ### Features 
