@@ -1,6 +1,7 @@
 # HTTPClient Client
 
 [![tests](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml/badge.svg)](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml)
+[![codecov](https://codecov.io/gh/ximtech/HTTPClient/branch/master/graph/badge.svg?token=NRezIEBnBn)](https://codecov.io/gh/ximtech/HTTPClient)
 
 Standalone library for formatting HTTPClient requests.
 
