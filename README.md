@@ -2,6 +2,7 @@
 
 [![tests](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml/badge.svg)](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml)
 [![codecov](https://codecov.io/gh/ximtech/HTTPClient/branch/master/graph/badge.svg?token=NRezIEBnBn)](https://codecov.io/gh/ximtech/HTTPClient)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/36824a68d0574bccb6feef94cc4ff6af)](https://www.codacy.com/gh/ximtech/HTTPClient/dashboard)
 
 Standalone library for formatting HTTPClient requests.
 
