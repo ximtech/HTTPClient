@@ -1,16 +1,22 @@
-# HTTP Client
+# HTTPClient Client
 
 [![tests](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml/badge.svg)](https://github.com/ximtech/HTTPClient/actions/workflows/cmake-ci.yml)
 
-Standalone library for formatting HTTP requests.
+Standalone library for formatting HTTPClient requests.
 
 ### Features 
 
-- Pluggable HTTP transport abstraction
-- Easily to make HTTP GET, POST, PUT, DELETE and HEAD requests to a web server
+- Pluggable HTTPClient transport abstraction
+- Easily to make HTTPClient GET, POST, PUT, DELETE and HEAD requests to a web server
 - Single callback method for low level library interaction
 - Provides auto Content-Length header with length for POST requests 
 - Provides functional style requests
+
+### Dependencies
+
+- [HashMap library](https://github.com/ximtech/HashMap)
+- [Ethernet library](https://github.com/ximtech/Ethernet)
+- [URL Parser library](https://github.com/ximtech/URLParser)
 
 ### Add as CPM project dependency
 
@@ -33,10 +39,12 @@ target_link_libraries(${PROJECT_NAME}.elf HTTPClient)
 
 ### Usage
 ```c
+#include "HTTPClient.h"
+
 // Create callback method at implementor side
-HTTPResponse sendHttpRequestCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
-    printf("Protocol: %s\n", url->protocol);
-    printf("Host: %s\n", url->host);
+HTTPResponse sendHttpRequestCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
+    printf("Protocol: %s\n", client->url.protocol);
+    printf("Host: %s\n", client->url.host);
     printf("Data length: %d\n", dataLength);
 
     // Formatted GET request
@@ -46,9 +54,9 @@ HTTPResponse sendHttpRequestCallback(URLParser *url, const char *requestBuffer, 
         "Connection: close\r\n"
         "User-Agent: FakeAgent\r\n"
         "Custom: header\r\n\r\n",
-        requestBuffer);
+        client->requestBuffer);
 
-    // Specific hardware implementation that send request
+    // Specific hardware implementation that send request to server
     HTTPResponse httpResponse = doRequestToServer(requestBuffer, dataLength);
     return httpResponse;
 }
@@ -56,16 +64,17 @@ HTTPResponse sendHttpRequestCallback(URLParser *url, const char *requestBuffer, 
 // User side, send request
 void sendGetRequest() {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpRequestCallback);   // register callback function
-    
-    HTTPResponse getResp = http.GET("http://httpbin.org/api")  // create request
-            .bindParam("param1", "value1")
-            .bindParam("param2", "value2")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .execute(&http);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpGETCallback);
+
+HTTPResponse response = client.GET(&client, "http://httpbin.org/api")
+        .bindParam(&client, "param1", "value1")
+        .bindParam(&client, "param2", "value2")
+        .addHeader(&client, CONNECTION, "close")
+        .addHeader(&client, USER_AGENT, "FakeAgent")
+        .addCustomHeader(&client, "Custom", "header")
+        .execute(&client);
     
     assert_int(HTTP_OK, ==, getResp.statusCode);
 }

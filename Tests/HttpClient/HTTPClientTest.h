@@ -34,27 +34,39 @@ static const char *jsonExample =
         "}}";
 
 
-static HTTPResponse sendHttpGETCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpGETCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
-    assert_uint32(127, ==, dataLength);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
+    assert_uint32(147, ==, dataLength);
 
-    assert_string_equal("GET /api?param2=value2&param1=value1 HTTP/1.1\r\n"
+    assert_string_equal("GET /api?param2=value2&param1=value1&key1=val1&key2=val2 HTTP/1.1\r\n"
                         "Host: httpbin.org\r\n"
                         "Connection: close\r\n"
                         "User-Agent: FakeAgent\r\n"
                         "Custom: header\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
+
+    assert_true(isHashMapNotEmpty(client->queryParameters));
+    assert_uint32(getHashMapSize(client->queryParameters), ==, 2);
+    assert_string_equal(hashMapGet(client->queryParameters, "param1"), "value1");
+    assert_string_equal(hashMapGet(client->queryParameters, "param2"), "value2");
+
+    assert_true(isHashMapNotEmpty(client->headers));
+    assert_uint32(getHashMapSize(client->headers), ==, 4);
+    assert_string_equal(hashMapGet(client->headers, "Host"), "httpbin.org");
+    assert_string_equal(hashMapGet(client->headers, "Connection"), "close");
+    assert_string_equal(hashMapGet(client->headers, "User-Agent"), "FakeAgent");
+    assert_string_equal(hashMapGet(client->headers, "Custom"), "header");
 
     assert_true(isBlockingExecute);
     return httpResponse;
 }
 
-static HTTPResponse sendHttpPOSTCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpPOSTCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
     assert_uint32(147, ==, dataLength);
 
     assert_string_equal("POST /api HTTP/1.1\r\n"
@@ -64,16 +76,16 @@ static HTTPResponse sendHttpPOSTCallback(URLParser *url, const char *requestBuff
                         "User-Agent: FakeAgent\r\n"
                         "Custom: header\r\n\r\n"
                         "param2=value2&param1=value1\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
 
     assert_true(isBlockingExecute);
     return httpResponse;
 }
 
-static HTTPResponse sendHttpPOSTJsonCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpPOSTJsonCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
     assert_uint32(723, ==, dataLength);
 
     assert_string_equal("POST /api HTTP/1.1\r\n"
@@ -106,16 +118,16 @@ static HTTPResponse sendHttpPOSTJsonCallback(URLParser *url, const char *request
                         "\"alignment\": \"center\",\n        "
                         "\"onMouseUp\": \"sun1.opacity = (sun1.opacity / 100) * 90;\"\n    "
                         "}\n}}\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
 
     assert_true(isBlockingExecute);
     return httpResponse;
 }
 
-static HTTPResponse sendHttpPUTCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpPUTCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
     assert_uint32(99, ==, dataLength);
 
     assert_string_equal("PUT /api HTTP/1.1\r\n"
@@ -123,16 +135,16 @@ static HTTPResponse sendHttpPUTCallback(URLParser *url, const char *requestBuffe
                         "Connection: close\r\n"
                         "User-Agent: FakeAgent\r\n"
                         "Custom: header\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
 
-    assert_true(isBlockingExecute);
+    assert_false(isBlockingExecute);
     return httpResponse;
 }
 
-static HTTPResponse sendHttpDELETECallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpDELETECallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
     assert_uint32(109, ==, dataLength);
 
     assert_string_equal("DELETE /api/1/test HTTP/1.1\r\n"
@@ -140,16 +152,16 @@ static HTTPResponse sendHttpDELETECallback(URLParser *url, const char *requestBu
                         "Connection: close\r\n"
                         "User-Agent: FakeAgent\r\n"
                         "Custom: header\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
 
     assert_false(isBlockingExecute);
     return httpResponse;
 }
 
-static HTTPResponse sendHttpHEADCallback(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute) {
+static HTTPResponse sendHttpHEADCallback(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_OK, NULL, NULL};
-    assert_string_equal("http", url->protocol);
-    assert_string_equal("httpbin.org", url->host);
+    assert_string_equal("http", client->url.protocol);
+    assert_string_equal("httpbin.org", client->url.host);
     assert_uint32(107, ==, dataLength);
 
     assert_string_equal("HEAD /api/1/test HTTP/1.1\r\n"
@@ -157,7 +169,7 @@ static HTTPResponse sendHttpHEADCallback(URLParser *url, const char *requestBuff
                         "Connection: close\r\n"
                         "User-Agent: FakeAgent\r\n"
                         "Custom: header\r\n\r\n",
-                        requestBuffer);
+                        client->requestBuffer);
 
     assert_false(isBlockingExecute);
     return httpResponse;
@@ -166,130 +178,138 @@ static HTTPResponse sendHttpHEADCallback(URLParser *url, const char *requestBuff
 
 static MunitResult httpClientGETTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpGETCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpGETCallback);
 
-    HTTPResponse response = http.GET("http://httpbin.org/api")
-            .bindParam("param1", "value1")
-            .bindParam("param2", "value2")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .execute(&http);
+    HTTPResponse response = client.GET(&client, "http://httpbin.org/api?key1=val1&key2=val2")
+            .bindParam(&client, "param1", "value1")
+            .bindParam(&client, "param2", "value2")
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .execute(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientPOSTTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpPOSTCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpPOSTCallback);
 
-    HTTPResponse response = http.POST("http://httpbin.org/api")
-            .bindParam("param1", "value1")
-            .bindParam("param2", "value2")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .execute(&http);
+    HTTPResponse response = client.POST(&client, "http://httpbin.org/api")
+            .bindParam(&client, "param1", "value1")
+            .bindParam(&client, "param2", "value2")
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .execute(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientPOSTJsonTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpPOSTJsonCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpPOSTJsonCallback);
 
-    HTTPResponse response = http.POST("http://httpbin.org/api")
-            .bindJson(jsonExample)
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .execute(&http);
+    HTTPResponse response = client.POST(&client, "http://httpbin.org/api")
+            .bindJson(&client, jsonExample)
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .execute(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientPUTTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpPUTCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpPUTCallback);
 
-    HTTPResponse response = http.PUT("http://httpbin.org/api")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .execute(&http);
+    HTTPResponse response = client.PUT(&client, "http://httpbin.org/api")
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .executeNonBlock(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientDELETETest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpDELETECallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpDELETECallback);
 
-    HTTPResponse response = http.DELETE("http://httpbin.org/api/1/test")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .executeNonBlock(&http);
+    HTTPResponse response = client.DELETE(&client, "http://httpbin.org/api/1/test")
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .executeNonBlock(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientHEADTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpHEADCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpHEADCallback);
 
-    HTTPResponse response = http.HEAD("http://httpbin.org/api/1/test")
-            .addHeader(CONNECTION, "close")
-            .addHeader(USER_AGENT, "FakeAgent")
-            .addCustomHeader("Custom", "header")
-            .executeNonBlock(&http);
+    HTTPResponse response = client.HEAD(&client, "http://httpbin.org/api/1/test")
+            .addHeader(&client, CONNECTION, "close")
+            .addHeader(&client, USER_AGENT, "FakeAgent")
+            .addCustomHeader(&client, "Custom", "header")
+            .executeNonBlock(&client);
 
     assert_int(HTTP_OK, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 
 static MunitResult httpClientInvalidDataTest(const MunitParameter params[], void *data) {
     char buffer[BUFFER_SIZE] = {0};
-    HTTP http = initHTTPInstance(buffer, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpGETCallback);
+    HTTPClient client = {0};
+    initHTTPClient(&client, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, sendHttpGETCallback);
 
-    HTTPResponse response = http.GET("test").execute(&http);    // invalid URL
+    HTTPResponse response = client.GET(&client, "test").execute(&client);    // invalid URL
     assert_int(HTTP_NO_STATUS, ==, response.statusCode);
 
-    http = initHTTPInstance(NULL, BUFFER_SIZE);
-    registerHttpCallback(&http, sendHttpGETCallback);
-    response = http.GET("http://httpbin.org/api").execute(&http);    // NULL pointer
+    initHTTPClient(NULL, buffer, BUFFER_SIZE);
+    registerHttpCallback(&client, NULL);
+    response = client.GET(&client, "http://httpbin.org/api").execute(NULL);    // NULL pointer
     assert_int(HTTP_NO_STATUS, ==, response.statusCode);
 
-    http = initHTTPInstance(buffer, 0);
-    registerHttpCallback(&http, sendHttpGETCallback);
-    response = http.GET("http://httpbin.org/api").execute(&http);    // wrong buffer size
+    HTTPClient invalidClient = {0};
+    initHTTPClient(&invalidClient, buffer, 0);
+    registerHttpCallback(&invalidClient, sendHttpGETCallback);
+    response = invalidClient.GET(&invalidClient, "http://httpbin.org/api").execute(&invalidClient);    // wrong buffer size
     assert_int(HTTP_NO_STATUS, ==, response.statusCode);
 
-    deleteHttpClient();
+    deleteHttpClient(&client);
     return MUNIT_OK;
 }
 

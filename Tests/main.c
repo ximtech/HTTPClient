@@ -1,4 +1,4 @@
-#include "Client/HTTPClientTest.h"
+#include "HttpClient/HTTPClientTest.h"
 
 
 int main(int argc, char *argv[MUNIT_ARRAY_PARAM(argc + 1)]) {

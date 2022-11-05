@@ -14,58 +14,62 @@ typedef struct HTTPResponse {
     char *body;
 } HTTPResponse;
 
-typedef struct HTTP HTTP;
+typedef struct HTTPClient HTTPClient;
 
 typedef struct GET {
-    struct GET (*bindParam)(const char *key, char *value);
-    struct GET (*addHeader)(HTTPHeaderKey key, char *value);
-    struct GET (*addCustomHeader)(const char *key, char *value);
-    HTTPResponse (*executeNonBlock)(HTTP *http);    // reactive mode: no polling wait for response
-    HTTPResponse (*execute)(HTTP *http);            // enable busy wait for response
+    struct GET (*bindParam)(HTTPClient *client, const char *key, char *value);
+    struct GET (*addHeader)(HTTPClient *client, HTTPHeaderKey key, char *value);
+    struct GET (*addCustomHeader)(HTTPClient *client, const char *key, char *value);
+    HTTPResponse (*executeNonBlock)(HTTPClient *http);    // reactive mode: no polling wait for response
+    HTTPResponse (*execute)(HTTPClient *http);            // enable busy wait for response
 } GET;
 
 typedef struct POST {
-    struct POST (*bindParam)(char *key, char *value);
-    struct POST (*bindJson)(const char *jsonString);
-    struct POST (*addHeader)(HTTPHeaderKey key, char *value);
-    struct POST (*addCustomHeader)(const char *key, char *value);
-    HTTPResponse (*executeNonBlock)(HTTP *http);
-    HTTPResponse (*execute)(HTTP *http);
+    struct POST (*bindParam)(HTTPClient *client, char *key, char *value);
+    struct POST (*bindJson)(HTTPClient *client, const char *jsonString);
+    struct POST (*addHeader)(HTTPClient *client, HTTPHeaderKey key, char *value);
+    struct POST (*addCustomHeader)(HTTPClient *client, const char *key, char *value);
+    HTTPResponse (*executeNonBlock)(HTTPClient *client);
+    HTTPResponse (*execute)(HTTPClient *client);
 } POST;
 
 typedef struct PUT {
-    struct PUT (*addHeader)(HTTPHeaderKey key, char *value);
-    struct PUT (*addCustomHeader)(const char *key, char *value);
-    HTTPResponse (*executeNonBlock)(HTTP *http);
-    HTTPResponse (*execute)(HTTP *http);
+    struct PUT (*addHeader)(HTTPClient *client, HTTPHeaderKey key, char *value);
+    struct PUT (*addCustomHeader)(HTTPClient *client, const char *key, char *value);
+    HTTPResponse (*executeNonBlock)(HTTPClient *client);
+    HTTPResponse (*execute)(HTTPClient *client);
 } PUT;
 
 typedef struct DELETE {
-    struct DELETE (*addHeader)(HTTPHeaderKey key, char *value);
-    struct DELETE (*addCustomHeader)(const char *key,  char *value);
-    HTTPResponse (*executeNonBlock)(HTTP *http);
-    HTTPResponse (*execute)(HTTP *http);
+    struct DELETE (*addHeader)(HTTPClient *client, HTTPHeaderKey key, char *value);
+    struct DELETE (*addCustomHeader)(HTTPClient *client, const char *key,  char *value);
+    HTTPResponse (*executeNonBlock)(HTTPClient *client);
+    HTTPResponse (*execute)(HTTPClient *client);
 } DELETE;
 
 typedef struct HEAD {
-    struct HEAD (*addHeader)(HTTPHeaderKey key, char *value);
-    struct HEAD (*addCustomHeader)(const char *key, char *value);
-    HTTPResponse (*executeNonBlock)(HTTP *http);
-    HTTPResponse (*execute)(HTTP *http);
+    struct HEAD (*addHeader)(HTTPClient *client, HTTPHeaderKey key, char *value);
+    struct HEAD (*addCustomHeader)(HTTPClient *client, const char *key, char *value);
+    HTTPResponse (*executeNonBlock)(HTTPClient *client);
+    HTTPResponse (*execute)(HTTPClient *client);
 } HEAD;
 
-struct HTTP {
-    struct GET (*GET)(char *host);
-    struct POST (*POST)(char *host);
-    struct PUT (*PUT)(char *host);
-    struct DELETE (*DELETE)(char *host);
-    struct HEAD (*HEAD)(char *host);
+struct HTTPClient {
+    struct GET (*GET)(HTTPClient *client, char *host);
+    struct POST (*POST)(HTTPClient *client, char *host);
+    struct PUT (*PUT)(HTTPClient *client, char *host);
+    struct DELETE (*DELETE)(HTTPClient *client, char *host);
+    struct HEAD (*HEAD)(HTTPClient *client, char *host);
 
-    char *requestDataBuffer;
+    URLParser url;
+    HashMap headers;
+    HashMap queryParameters;
+
+    char *requestBuffer;
     uint32_t requestBufferSize;
-    HTTPResponse (*sendRequestCallback)(URLParser *url, const char *requestBuffer, uint32_t dataLength, bool isBlockingExecute);
+    HTTPResponse (*sendRequestCallback)(HTTPClient *client, uint32_t dataLength, bool isBlockingExecute);
 };
 
-HTTP initHTTPInstance(char *dataBufferPointer, uint32_t size);
-void registerHttpCallback(HTTP *http, HTTPResponse (*callbackFunction)(URLParser *, const char *, uint32_t, bool));// abstract function, must be implemented at the module inherited side
-void deleteHttpClient();
+void initHTTPClient(HTTPClient *client, char *dataBuffer, uint32_t size);
+void registerHttpCallback(HTTPClient *client, HTTPResponse (*callbackFunction)(HTTPClient *, uint32_t, bool));// abstract function, must be implemented at the module inherited side
+void deleteHttpClient(HTTPClient *client);

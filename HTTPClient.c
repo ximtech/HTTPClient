@@ -5,302 +5,299 @@
 #define HEADER_SEMICOLON ": "
 #define NEW_LINE         "\r\n"
 
-static GET get(char *url);
-static GET bindGetParam(const char *key, char *value);
-static GET addGetHeader(HTTPHeaderKey key, char *value);
-static GET addGetCustomHeader(const char *key, char *value);
-static HTTPResponse executeGet(HTTP *http);
-static HTTPResponse executeGetNonBlock(HTTP *http);
+static GET get(HTTPClient *client, char *rawUrl);
+static GET bindGetParam(HTTPClient *client, const char *key, char *value);
+static GET addGetHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static GET addGetCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse executeGet(HTTPClient *client);
+static HTTPResponse executeGetNonBlock(HTTPClient *client);
 
-static POST post(char *rawUrl);
-static POST bindPostParam(char *key, char *value);
-static POST bindJson(const char *jsonString);
-static POST addPostHeader(HTTPHeaderKey key, char *value);
-static POST addPostCustomHeader(const char *key, char *value);
-static HTTPResponse executePost(HTTP *http);
-static HTTPResponse executePostNonBlock(HTTP *http);
+static POST post(HTTPClient *client, char *rawUrl);
+static POST bindPostParam(HTTPClient *client, char *key, char *value);
+static POST bindJson(HTTPClient *client, const char *jsonString);
+static POST addPostHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static POST addPostCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse executePost(HTTPClient *http);
+static HTTPResponse executePostNonBlock(HTTPClient *http);
 
-static PUT put(char *rawUrl);
-static PUT addPutHeader(HTTPHeaderKey key, char *value);
-static PUT addPutCustomHeader(const char *key, char *value);
-static HTTPResponse executePut(HTTP *http);
-static HTTPResponse executePutNonBlock(HTTP *http);
+static PUT put(HTTPClient *client, char *rawUrl);
+static PUT addPutHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static PUT addPutCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse executePut(HTTPClient *http);
+static HTTPResponse executePutNonBlock(HTTPClient *http);
 
-static DELETE aDelete(char *rawUrl);
-static DELETE addDeleteHeader(HTTPHeaderKey key, char *value);
-static DELETE addDeleteCustomHeader(const char *key, char *value);
-static HTTPResponse executeDelete(HTTP *http);
-static HTTPResponse executeDeleteNonBlock(HTTP *http);
+static DELETE aDelete(HTTPClient *client, char *rawUrl);
+static DELETE addDeleteHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static DELETE addDeleteCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse executeDelete(HTTPClient *http);
+static HTTPResponse executeDeleteNonBlock(HTTPClient *http);
 
-static HEAD head(char *rawUrl);
-static HEAD addHeadHeader(HTTPHeaderKey key, char *value);
-static HEAD addHeadCustomHeader(const char *key, char *value);
-static HTTPResponse executeHead(HTTP *http);
-static HTTPResponse executeHeadNonBlock(HTTP *http);
+static HEAD head(HTTPClient *client, char *rawUrl);
+static HEAD addHeadHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static HEAD addHeadCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse executeHead(HTTPClient *http);
+static HTTPResponse executeHeadNonBlock(HTTPClient *http);
 
-static void resetInnerData();
-static void bindParam(const char *key, char *value);
-static void addHeader(HTTPHeaderKey key, char *value);
-static void addCustomHeader(const char *key, char *value);
-static HTTPResponse doExecute(HTTPMethod method, HTTP *http, bool isBlockingExecute);
+static void resetInnerData(HTTPClient *client);
+static void bindParam(HTTPClient *client, const char *key, char *value);
+static void addHeader(HTTPClient *client, HTTPHeaderKey key, char *value);
+static void addCustomHeader(HTTPClient *client, const char *key, char *value);
+static HTTPResponse doExecute(HTTPMethod method, HTTPClient *client, bool isBlockingExecute);
 
-static uint32_t getUrlEncodedParamsLength();
-static uint32_t getBodyEncodedParamsLength();
-static uint32_t countParameterLength();
-static uint32_t getHeadersLength();
-static void addHeadersToRequest(char *requestBuffer);
-static void addUrlEncodedParamsToRequest(char *requestBuffer);
-static void addBodyEncodedParamsToRequest(char *requestBuffer);
+static uint32_t getUrlEncodedParamsLength(HTTPClient *client);
+static uint32_t getBodyEncodedParamsLength(HTTPClient *client);
+static uint32_t countParameterLength(HTTPClient *client);
+static uint32_t getHeadersLength(HTTPClient *client);
+static void addHeadersToRequest(HTTPClient *client);
+static void addUrlEncodedParamsToRequest(HTTPClient *client);
+static void addBodyEncodedParamsToRequest(HTTPClient *client);
 
-static URLParser url;
-static HashMap headerMap = NULL;
-static HashMap queryParameterMap = NULL;
+static GET httpGet = {
+        .bindParam = bindGetParam,
+        .addHeader = addGetHeader,
+        .addCustomHeader = addGetCustomHeader,
+        .executeNonBlock = executeGetNonBlock,
+        .execute = executeGet,
+};
+static POST httpPost = {
+        .bindParam = bindPostParam,
+        .bindJson = bindJson,
+        .addHeader = addPostHeader,
+        .addCustomHeader = addPostCustomHeader,
+        .executeNonBlock = executePostNonBlock,
+        .execute = executePost,
+};
+static PUT httpPut = {
+        .addHeader = addPutHeader,
+        .addCustomHeader = addPutCustomHeader,
+        .executeNonBlock = executePutNonBlock,
+        .execute = executePut,
+};
+static DELETE httpDelete = {
+        .addHeader = addDeleteHeader,
+        .addCustomHeader = addDeleteCustomHeader,
+        .executeNonBlock = executeDeleteNonBlock,
+        .execute = executeDelete,
+};
+static HEAD httpHead = {
+        .addHeader = addHeadHeader,
+        .addCustomHeader = addHeadCustomHeader,
+        .executeNonBlock = executeHeadNonBlock,
+        .execute = executeHead,
+};
 
-static GET httpGet = {NULL, NULL, NULL, NULL};
-static POST httpPost = {NULL, NULL, NULL, NULL, NULL};
-static PUT httpPut = {NULL, NULL, NULL};
-static DELETE httpDelete = {NULL, NULL, NULL};
-static HEAD httpHead = {NULL, NULL, NULL};
 
+void initHTTPClient(HTTPClient *client, char *dataBuffer, uint32_t size) {
+    if (client == NULL) return;
+    client->GET = get;
+    client->POST = post;
+    client->PUT = put;
+    client->DELETE = aDelete;
+    client->HEAD = head;
 
-HTTP initHTTPInstance(char *dataBufferPointer, uint32_t size) {
-    HTTP http = {NULL, NULL, NULL, NULL, NULL};
+    client->requestBuffer = dataBuffer;
+    client->requestBufferSize = size;
 
-    http.GET = get;
-    httpGet.bindParam = bindGetParam;
-    httpGet.addHeader = addGetHeader;
-    httpGet.addCustomHeader = addGetCustomHeader;
-    httpGet.executeNonBlock = executeGetNonBlock;
-    httpGet.execute = executeGet;
-
-    http.POST = post;
-    httpPost.bindParam = bindPostParam;
-    httpPost.bindJson = bindJson;
-    httpPost.addHeader = addPostHeader;
-    httpPost.addCustomHeader = addPostCustomHeader;
-    httpPost.executeNonBlock = executePostNonBlock;
-    httpPost.execute = executePost;
-
-    http.PUT = put;
-    httpPut.addHeader = addPutHeader;
-    httpPut.addCustomHeader = addPutCustomHeader;
-    httpPut.executeNonBlock = executePutNonBlock;
-    httpPut.execute = executePut;
-
-    http.DELETE = aDelete;
-    httpDelete.addHeader = addDeleteHeader;
-    httpDelete.addCustomHeader = addDeleteCustomHeader;
-    httpDelete.executeNonBlock = executeDeleteNonBlock;
-    httpDelete.execute = executeDelete;
-
-    http.HEAD = head;
-    httpHead.addHeader = addHeadHeader;
-    httpHead.addCustomHeader = addHeadCustomHeader;
-    httpHead.executeNonBlock = executeHeadNonBlock;
-    httpHead.execute = executeHead;
-
-    http.requestDataBuffer = dataBufferPointer;
-    http.requestBufferSize = size;
-
-    initSingletonHashMap(&headerMap, HEADER_MAP_INITIAL_CAPACITY);
-    initSingletonHashMap(&queryParameterMap, QUERY_PARAMETER_MAP_INITIAL_CAPACITY);
-    return http;
+    initSingletonHashMap(&client->headers, HEADER_MAP_INITIAL_CAPACITY);
+    initSingletonHashMap(&client->queryParameters, QUERY_PARAMETER_MAP_INITIAL_CAPACITY);
 }
 
-void registerHttpCallback(HTTP *http, HTTPResponse (*callbackFunction)(URLParser *, const char *, uint32_t, bool)) {
-    if (http != NULL && callbackFunction != NULL) {
-        http->sendRequestCallback = callbackFunction;
+void registerHttpCallback(HTTPClient *client, HTTPResponse (*callbackFunction)(HTTPClient *, uint32_t, bool)) {
+    if (client != NULL && callbackFunction != NULL) {
+        client->sendRequestCallback = callbackFunction;
     }
 }
 
-void deleteHttpClient() {
-    hashMapDelete(headerMap);
-    hashMapDelete(queryParameterMap);
-    headerMap = NULL;
-    queryParameterMap = NULL;
+void deleteHttpClient(HTTPClient *client) {
+    if (client != NULL) {
+        hashMapDelete(client->headers);
+        hashMapDelete(client->queryParameters);
+        client->headers = NULL;
+        client->queryParameters = NULL;
+    }
 }
 
-static GET get(char *rawUrl) {
-    resetInnerData();
-    parseUrlString(&url, rawUrl);
+static GET get(HTTPClient *client, char *rawUrl) {
+    resetInnerData(client);
+    parseUrlString(&client->url, rawUrl);
     return httpGet;
 }
 
-static GET bindGetParam(const char *key, char *value) {
-    bindParam(key, value);
+static GET bindGetParam(HTTPClient *client, const char *key, char *value) {
+    bindParam(client, key, value);
     return httpGet;
 }
 
-static GET addGetHeader(HTTPHeaderKey key, char *value) {
-    addHeader(key, value);
+static GET addGetHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addHeader(client, key, value);
     return httpGet;
 }
 
-static GET addGetCustomHeader(const char *key, char *value) {
-    addCustomHeader(key, value);
+static GET addGetCustomHeader(HTTPClient *client, const char *key, char *value) {
+    addCustomHeader(client, key, value);
     return httpGet;
 }
 
-static HTTPResponse executeGet(HTTP *http) {
-    return doExecute(HTTP_GET, http, true);
+static HTTPResponse executeGet(HTTPClient *client) {
+    return doExecute(HTTP_GET, client, true);
 }
 
-static HTTPResponse executeGetNonBlock(HTTP *http) {
-    return doExecute(HTTP_GET, http, false);
+static HTTPResponse executeGetNonBlock(HTTPClient *client) {
+    return doExecute(HTTP_GET, client, false);
 }
 
 
-static POST post(char *rawUrl) {
-    resetInnerData();
-    parseUrlString(&url, rawUrl);
+static POST post(HTTPClient *client, char *rawUrl) {
+    resetInnerData(client);
+    parseUrlString(&client->url, rawUrl);
     return httpPost;
 }
 
-static POST bindPostParam(char *key, char *value) {
-    bindParam(key, value);
+static POST bindPostParam(HTTPClient *client, char *key, char *value) {
+    bindParam(client, key, value);
     return httpPost;
 }
 
-static POST bindJson(const char *jsonString) {
-    hashMapPut(queryParameterMap, "", (char *) jsonString);
+static POST bindJson(HTTPClient *client, const char *jsonString) {
+    hashMapPut(client->queryParameters, "", (char *) jsonString);
     return httpPost;
 }
 
-static POST addPostHeader(HTTPHeaderKey key, char *value) {
-    addHeader(key, value);
+static POST addPostHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addHeader(client, key, value);
     return httpPost;
 }
 
-static POST addPostCustomHeader(const char *key, char *value) {
-    addCustomHeader(key, value);
+static POST addPostCustomHeader(HTTPClient *client, const char *key, char *value) {
+    addCustomHeader(client, key, value);
     return httpPost;
 }
 
-static HTTPResponse executePost(HTTP *http) {
+static HTTPResponse executePost(HTTPClient *http) {
     return doExecute(HTTP_POST, http, true);
 }
 
-static HTTPResponse executePostNonBlock(HTTP *http) {
+static HTTPResponse executePostNonBlock(HTTPClient *http) {
     return doExecute(HTTP_POST, http, false);
 }
 
 
-static PUT put(char *rawUrl) {
-    resetInnerData();
-    parseUrlString(&url, rawUrl);
+static PUT put(HTTPClient *client, char *rawUrl) {
+    resetInnerData(client);
+    parseUrlString(&client->url, rawUrl);
     return httpPut;
 }
 
-static PUT addPutHeader(HTTPHeaderKey key, char *value) {
-    addHeader(key, value);
+static PUT addPutHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addHeader(client, key, value);
     return httpPut;
 }
 
-static PUT addPutCustomHeader(const char *key, char *value) {
-    addCustomHeader(key, value);
+static PUT addPutCustomHeader(HTTPClient *client, const char *key, char *value) {
+    addCustomHeader(client, key, value);
     return httpPut;
 }
 
-static HTTPResponse executePut(HTTP *http) {
+static HTTPResponse executePut(HTTPClient *http) {
     return doExecute(HTTP_PUT, http, true);
 }
 
-static HTTPResponse executePutNonBlock(HTTP *http) {
+static HTTPResponse executePutNonBlock(HTTPClient *http) {
     return doExecute(HTTP_PUT, http, false);
 }
 
 
-static DELETE aDelete(char *rawUrl) {
-    resetInnerData();
-    parseUrlString(&url, rawUrl);
+static DELETE aDelete(HTTPClient *client, char *rawUrl) {
+    resetInnerData(client);
+    parseUrlString(&client->url, rawUrl);
     return httpDelete;
 }
 
-static DELETE addDeleteHeader(HTTPHeaderKey key, char *value) {
-    addHeader(key, value);
+static DELETE addDeleteHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addHeader(client, key, value);
     return httpDelete;
 }
 
-static DELETE addDeleteCustomHeader(const char *key, char *value) {
-    addCustomHeader(key, value);
+static DELETE addDeleteCustomHeader(HTTPClient *client, const char *key, char *value) {
+    addCustomHeader(client, key, value);
     return httpDelete;
 }
 
-static HTTPResponse executeDelete(HTTP *http) {
+static HTTPResponse executeDelete(HTTPClient *http) {
     return doExecute(HTTP_DELETE, http, true);
 }
 
-static HTTPResponse executeDeleteNonBlock(HTTP *http) {
+static HTTPResponse executeDeleteNonBlock(HTTPClient *http) {
     return doExecute(HTTP_DELETE, http, false);
 }
 
 
-static HEAD head(char *rawUrl) {
-    resetInnerData();
-    parseUrlString(&url, rawUrl);
+static HEAD head(HTTPClient *client, char *rawUrl) {
+    resetInnerData(client);
+    parseUrlString(&client->url, rawUrl);
     return httpHead;
 }
 
-static HEAD addHeadHeader(HTTPHeaderKey key, char *value) {
-    addHeader(key, value);
+static HEAD addHeadHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addHeader(client, key, value);
     return httpHead;
 }
 
-static HEAD addHeadCustomHeader(const char *key, char *value) {
-    addCustomHeader(key, value);
+static HEAD addHeadCustomHeader(HTTPClient *client, const char *key, char *value) {
+    addCustomHeader(client, key, value);
     return httpHead;
 }
 
-static HTTPResponse executeHead(HTTP *http) {
+static HTTPResponse executeHead(HTTPClient *http) {
     return doExecute(HTTP_HEAD, http, true);
 }
 
-static HTTPResponse executeHeadNonBlock(HTTP *http) {
+static HTTPResponse executeHeadNonBlock(HTTPClient *http) {
     return doExecute(HTTP_HEAD, http, false);
 }
 
 
-static void resetInnerData() {
-    hashMapClear(queryParameterMap);
-    hashMapClear(headerMap);
+static void resetInnerData(HTTPClient *client) {
+    hashMapClear(client->queryParameters);
+    hashMapClear(client->headers);
 }
 
-static void bindParam(const char *key, char *value) {
+static void bindParam(HTTPClient *client, const char *key, char *value) {
     if (isStringNotBlank(key) && isStringNotBlank(value)) {
-        hashMapPut(queryParameterMap, key, value);
+        hashMapPut(client->queryParameters, key, value);
     }
 }
 
-static void addHeader(HTTPHeaderKey key, char *value) {
-    addCustomHeader(getHeaderValueByKey(key), value);
+static void addHeader(HTTPClient *client, HTTPHeaderKey key, char *value) {
+    addCustomHeader(client, getHeaderValueByKey(key), value);
 }
 
-static void addCustomHeader(const char *key, char *value) {
+static void addCustomHeader(HTTPClient *client, const char *key, char *value) {
     if (isStringNotBlank(key) && isStringNotBlank(value)) {
-        hashMapPut(headerMap, key, value);
+        hashMapPut(client->headers, key, value);
     }
 }
 
-static HTTPResponse doExecute(HTTPMethod method, HTTP *http, bool isBlockingExecute) {
+static HTTPResponse doExecute(HTTPMethod method, HTTPClient *client, bool isBlockingExecute) {
     HTTPResponse httpResponse = {HTTP_NO_STATUS, NULL, NULL};
-    if (url.isUrlValid && http->requestDataBuffer != NULL && http->requestBufferSize > 0) {
+    if (client != NULL && client->url.isUrlValid && client->requestBuffer != NULL && client->requestBufferSize > 0) {
         uint32_t requestDataLength = 0;
         const char *methodName = getHttpMethodName(method);
-        addHeader(HOST, url.host);  // add required header for HTTP/1.1
+        addHeader(client, HOST, client->url.host);  // add required header for HTTPClient/1.1
 
         requestDataLength += strlen(methodName);
         requestDataLength += strlen(" /");
-        requestDataLength += strlen(url.path);
+        requestDataLength += strlen(client->url.path);
 
         if (method == HTTP_GET) {
-            requestDataLength += getUrlEncodedParamsLength();
-            requestDataLength += isStringNotEmpty(url.parameters) ? strlen(url.parameters) + 1 : 0; // +1 for delimiter "&" or "?"
+            requestDataLength += getUrlEncodedParamsLength(client);
+            requestDataLength += isStringNotEmpty(client->url.parameters) ? strlen(client->url.parameters) + 1 : 0; // +1 for delimiter "&" or "?"
         } else if (method == HTTP_POST) {
-            uint32_t parametersLength = getBodyEncodedParamsLength();
+            uint32_t parametersLength = getBodyEncodedParamsLength(client);
             if (parametersLength > 0) {
                 char dataLengthBuffer[sizeof(uint32_t) * 8 + 1];    // u32 full size and +1 for line end
                 sprintf(dataLengthBuffer, "%lu", parametersLength);
-                addHeader(CONTENT_LENGTH, dataLengthBuffer);
+                addHeader(client, CONTENT_LENGTH, dataLengthBuffer);
             }
             requestDataLength += parametersLength;
         }
@@ -308,66 +305,66 @@ static HTTPResponse doExecute(HTTPMethod method, HTTP *http, bool isBlockingExec
         requestDataLength += strlen(" ");
         requestDataLength += strlen(HTTP_VERSION_HEADER);
         requestDataLength += strlen(NEW_LINE);
-        requestDataLength += getHeadersLength();
+        requestDataLength += getHeadersLength(client);
         requestDataLength++;     // place for line end
 
-        if (requestDataLength >= http->requestBufferSize) { // check that data fits buffer size
+        if (requestDataLength >= client->requestBufferSize) { // check that data fits buffer size
             return httpResponse;
         }
-        memset(http->requestDataBuffer, 0, http->requestBufferSize);
-        strcat(http->requestDataBuffer, methodName);
-        strcat(http->requestDataBuffer, " /");
-        strcat(http->requestDataBuffer, url.path);
+        memset(client->requestBuffer, 0, client->requestBufferSize);
+        strcat(client->requestBuffer, methodName);
+        strcat(client->requestBuffer, " /");
+        strcat(client->requestBuffer, client->url.path);
 
         if (method == HTTP_GET) {
-            addUrlEncodedParamsToRequest(http->requestDataBuffer);
-            if (isStringNotEmpty(url.parameters)) {
-                strcat(http->requestDataBuffer, isHashMapEmpty(queryParameterMap) ? "?" : "&");
-                strcat(http->requestDataBuffer, url.parameters);
+            addUrlEncodedParamsToRequest(client);
+            if (isStringNotEmpty(client->url.parameters)) {
+                strcat(client->requestBuffer, isHashMapEmpty(client->queryParameters) ? "?" : "&");
+                strcat(client->requestBuffer, client->url.parameters);
             }
         }
-        strcat(http->requestDataBuffer, " ");
-        strcat(http->requestDataBuffer, HTTP_VERSION_HEADER);
-        strcat(http->requestDataBuffer, NEW_LINE);
-        addHeadersToRequest(http->requestDataBuffer);
+        strcat(client->requestBuffer, " ");
+        strcat(client->requestBuffer, HTTP_VERSION_HEADER);
+        strcat(client->requestBuffer, NEW_LINE);
+        addHeadersToRequest(client);
 
         if (method == HTTP_POST) {
-            addBodyEncodedParamsToRequest(http->requestDataBuffer);
+            addBodyEncodedParamsToRequest(client);
         }
 
-        if (http->sendRequestCallback != NULL) {
-            return http->sendRequestCallback(&url, http->requestDataBuffer, requestDataLength, isBlockingExecute);
+        if (client->sendRequestCallback != NULL) {
+            return client->sendRequestCallback(client, requestDataLength, isBlockingExecute);
         }
     }
     return httpResponse;
 }
 
-static uint32_t getUrlEncodedParamsLength() {
+static uint32_t getUrlEncodedParamsLength(HTTPClient *client) {
     uint32_t paramLength = 0;
-    uint32_t parametersCount = getHashMapSize(queryParameterMap);
+    uint32_t parametersCount = getHashMapSize(client->queryParameters);
     if (parametersCount > 0) {// count of all "?", "="(2x) and "&" symbols. Total: 4 chars per each parameter if more than 1
         paramLength++; //  add start "?"
         paramLength += parametersCount; // each parameter "="
         paramLength += parametersCount - 1; // and "&" when parameters more than 1
-        paramLength += countParameterLength();
+        paramLength += countParameterLength(client);
     }
     return paramLength;
 }
 
-static uint32_t getBodyEncodedParamsLength() {
+static uint32_t getBodyEncodedParamsLength(HTTPClient *client) {
     uint32_t paramLength = 0;
-    uint32_t parametersCount = getHashMapSize(queryParameterMap);
+    uint32_t parametersCount = getHashMapSize(client->queryParameters);
     if (parametersCount > 0) {
         paramLength += parametersCount; // each parameter "="
         paramLength += parametersCount - 1; // and "&" when parameters more than 1
-        paramLength += countParameterLength();
+        paramLength += countParameterLength(client);
     }
     return paramLength;
 }
 
-static uint32_t countParameterLength() {
+static uint32_t countParameterLength(HTTPClient *client) {
     uint32_t paramLength = 0;
-    HashMapIterator iterator = getHashMapIterator(queryParameterMap);
+    HashMapIterator iterator = getHashMapIterator(client->queryParameters);
     while (hashMapHasNext(&iterator)) {
         paramLength += strlen(iterator.key);
         paramLength += strlen(iterator.value);
@@ -375,9 +372,9 @@ static uint32_t countParameterLength() {
     return paramLength;
 }
 
-static uint32_t getHeadersLength() {
+static uint32_t getHeadersLength(HTTPClient *client) {
     uint32_t headerLength = 0;
-    HashMapIterator iterator = getHashMapIterator(headerMap);
+    HashMapIterator iterator = getHashMapIterator(client->headers);
     while (hashMapHasNext(&iterator)) {
         headerLength += strlen(iterator.key);
         headerLength += strlen(HEADER_SEMICOLON);
@@ -385,59 +382,59 @@ static uint32_t getHeadersLength() {
         headerLength += strlen(NEW_LINE);
     }
 
-    if (isHashMapNotEmpty(headerMap)) { // add new line at the headers end
+    if (isHashMapNotEmpty(client->headers)) { // add new line at the headers end
         headerLength += strlen(NEW_LINE);
     }
     return headerLength;
 }
 
-static void addUrlEncodedParamsToRequest(char *requestBuffer) {
-    HashMapIterator iterator = getHashMapIterator(queryParameterMap);
+static void addUrlEncodedParamsToRequest(HTTPClient *client) {
+    HashMapIterator iterator = getHashMapIterator(client->queryParameters);
     uint32_t index = 0;
     while (hashMapHasNext(&iterator)) {
         if (index == 0) {
-            strcat(requestBuffer, "?");
+            strcat(client->requestBuffer, "?");
         } else {
-            strcat(requestBuffer, "&");
+            strcat(client->requestBuffer, "&");
         }
-        strcat(requestBuffer, iterator.key);
-        strcat(requestBuffer, "=");
-        strcat(requestBuffer, iterator.value);
+        strcat(client->requestBuffer, iterator.key);
+        strcat(client->requestBuffer, "=");
+        strcat(client->requestBuffer, iterator.value);
         index++;
     }
 }
 
-static void addHeadersToRequest(char *requestBuffer) {
-    HashMapIterator iterator = getHashMapIterator(headerMap);
+static void addHeadersToRequest(HTTPClient *client) {
+    HashMapIterator iterator = getHashMapIterator(client->headers);
     while (hashMapHasNext(&iterator)) {
-        strcat(requestBuffer, iterator.key);
-        strcat(requestBuffer, HEADER_SEMICOLON);
-        strcat(requestBuffer, iterator.value);
-        strcat(requestBuffer, NEW_LINE);
+        strcat(client->requestBuffer, iterator.key);
+        strcat(client->requestBuffer, HEADER_SEMICOLON);
+        strcat(client->requestBuffer, iterator.value);
+        strcat(client->requestBuffer, NEW_LINE);
     }
 
-    if (isHashMapNotEmpty(headerMap)) { // add new line at the headers end
-        strcat(requestBuffer, NEW_LINE);
+    if (isHashMapNotEmpty(client->headers)) { // add new line at the headers end
+        strcat(client->requestBuffer, NEW_LINE);
     }
 }
 
-static void addBodyEncodedParamsToRequest(char *requestBuffer) {
-    HashMapIterator iterator = getHashMapIterator(queryParameterMap);
+static void addBodyEncodedParamsToRequest(HTTPClient *client) {
+    HashMapIterator iterator = getHashMapIterator(client->queryParameters);
     uint32_t index = 0;
     while (hashMapHasNext(&iterator)) {
         if (isStringNotEmpty(iterator.key)) {   // for empty string, means json
             if (index > 0) {
-                strcat(requestBuffer, "&");
+                strcat(client->requestBuffer, "&");
             }
-            strcat(requestBuffer, iterator.key);
-            strcat(requestBuffer, "=");
+            strcat(client->requestBuffer, iterator.key);
+            strcat(client->requestBuffer, "=");
         }
-        strcat(requestBuffer, iterator.value);
+        strcat(client->requestBuffer, iterator.value);
         index++;
     }
 
-    if (isHashMapNotEmpty(queryParameterMap)) {
-        strcat(requestBuffer, NEW_LINE);
-        strcat(requestBuffer, NEW_LINE);
+    if (isHashMapNotEmpty(client->queryParameters)) {
+        strcat(client->requestBuffer, NEW_LINE);
+        strcat(client->requestBuffer, NEW_LINE);
     }
 }
